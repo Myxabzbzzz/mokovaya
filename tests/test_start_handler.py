@@ -5,7 +5,7 @@ from aiogram.fsm.storage.base import StorageKey
 from aiogram.fsm.storage.memory import MemoryStorage
 from sqlalchemy import select
 
-from bot.handlers.start import cmd_start, process_contact, process_name
+from bot.handlers.start import RESERVED_VALUE_REPLY, cmd_start, process_contact, process_name
 from bot.states import Registration
 from db.models import User
 
@@ -113,4 +113,29 @@ async def test_process_contact_rejects_sql_injection_attempt(session):
         "Я же не дурак, конечно я предусмотрел что будет sql иньекция"
     )
     result = await session.execute(select(User).where(User.telegram_id == 99))
+    assert result.scalar_one_or_none() is None
+
+
+async def test_process_name_rejects_reserved_value():
+    message = _make_message("Myxa")
+    state = _make_state()
+    await state.set_state(Registration.waiting_for_name)
+
+    await process_name(message, state)
+
+    assert await state.get_state() == Registration.waiting_for_name.state
+    message.answer.assert_awaited_once_with(RESERVED_VALUE_REPLY)
+
+
+async def test_process_contact_rejects_reserved_value_case_insensitive_with_at(session):
+    message = _make_message("@RW8js7", user_id=77)
+    state = _make_state()
+    await state.set_state(Registration.waiting_for_contact)
+    await state.update_data(name="Аня")
+
+    await process_contact(message, state, session)
+
+    assert await state.get_state() == Registration.waiting_for_contact.state
+    message.answer.assert_awaited_once_with(RESERVED_VALUE_REPLY)
+    result = await session.execute(select(User).where(User.telegram_id == 77))
     assert result.scalar_one_or_none() is None

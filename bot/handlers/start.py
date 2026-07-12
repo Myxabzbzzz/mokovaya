@@ -1,5 +1,3 @@
-import re
-
 from aiogram import Router
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
@@ -9,31 +7,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.handlers.menu import send_main_menu
 from bot.states import Registration
+from bot.validators import (
+    RESERVED_VALUE_REPLY,
+    SQL_INJECTION_REPLY,
+    is_reserved_value,
+    looks_like_sql_injection,
+)
 from db.models import User
 
 router = Router()
-
-# Registration inputs (name, contact) are free text, so they're the only user
-# input surface reaching the DB. All queries use SQLAlchemy's parameterized
-# builder, so SQL injection isn't actually possible here — this is a honeypot
-# check to reject obvious injection attempts with a dedicated reply, not a
-# real defense mechanism.
-_SQL_INJECTION_PATTERN = re.compile(
-    r"(--|;|/\*|\*/)"
-    r"|\bunion\b\s+\bselect\b"
-    r"|\bdrop\b\s+\btable\b"
-    r"|\binsert\b\s+\binto\b"
-    r"|\bdelete\b\s+\bfrom\b"
-    r"|\bxp_cmdshell\b"
-    r"|'\s*or\s*'?\d*'?\s*=\s*'?\d*'?",
-    re.IGNORECASE,
-)
-
-SQL_INJECTION_REPLY = "Я же не дурак, конечно я предусмотрел что будет sql иньекция"
-
-
-def _looks_like_sql_injection(text: str) -> bool:
-    return bool(_SQL_INJECTION_PATTERN.search(text))
 
 WELCOME_TEXT = (
     "Добро пожаловать в Моковую 👋\n"
@@ -72,8 +54,12 @@ async def process_name(message: Message, state: FSMContext) -> None:
         await message.answer("Пожалуйста, напиши своё имя текстом.")
         return
 
-    if _looks_like_sql_injection(name):
+    if looks_like_sql_injection(name):
         await message.answer(SQL_INJECTION_REPLY)
+        return
+
+    if is_reserved_value(name):
+        await message.answer(RESERVED_VALUE_REPLY)
         return
 
     await state.update_data(name=name[:255])
@@ -88,8 +74,12 @@ async def process_contact(message: Message, state: FSMContext, session: AsyncSes
         await message.answer("Напиши, пожалуйста, юзернейм или номер телефона текстом.")
         return
 
-    if _looks_like_sql_injection(contact):
+    if looks_like_sql_injection(contact):
         await message.answer(SQL_INJECTION_REPLY)
+        return
+
+    if is_reserved_value(contact):
+        await message.answer(RESERVED_VALUE_REPLY)
         return
 
     data = await state.get_data()
