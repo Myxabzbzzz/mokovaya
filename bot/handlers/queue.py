@@ -7,7 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.handlers.menu import send_main_menu
 from db.models import Match, QueueRole, User
-from services.matching import AlreadyInQueueError, NotInQueueError, cancel_queue, join_queue
+from services.matching import (
+    AlreadyInQueueError,
+    NotInQueueError,
+    RecentlyMatchedError,
+    cancel_queue,
+    join_queue,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +74,12 @@ async def _join(callback: CallbackQuery, session: AsyncSession, bot: Bot, role: 
     except AlreadyInQueueError:
         await callback.answer(
             "Ты уже в очереди, отмени поиск, если хочешь передумать", show_alert=True
+        )
+        return
+    except RecentlyMatchedError:
+        await callback.answer(
+            "Ты только что нашёл партнёра, подожди немного перед следующим поиском",
+            show_alert=True,
         )
         return
 

@@ -85,3 +85,32 @@ async def test_process_contact_creates_user(session):
     assert user.name == "Аня"
     assert user.contact == "@anya"
     assert await state.get_state() is None
+
+
+async def test_process_name_rejects_sql_injection_attempt():
+    message = _make_message("Robert'); DROP TABLE users;--")
+    state = _make_state()
+    await state.set_state(Registration.waiting_for_name)
+
+    await process_name(message, state)
+
+    assert await state.get_state() == Registration.waiting_for_name.state
+    message.answer.assert_awaited_once_with(
+        "Я же не дурак, конечно я предусмотрел что будет sql иньекция"
+    )
+
+
+async def test_process_contact_rejects_sql_injection_attempt(session):
+    message = _make_message("' OR '1'='1", user_id=99)
+    state = _make_state()
+    await state.set_state(Registration.waiting_for_contact)
+    await state.update_data(name="Аня")
+
+    await process_contact(message, state, session)
+
+    assert await state.get_state() == Registration.waiting_for_contact.state
+    message.answer.assert_awaited_once_with(
+        "Я же не дурак, конечно я предусмотрел что будет sql иньекция"
+    )
+    result = await session.execute(select(User).where(User.telegram_id == 99))
+    assert result.scalar_one_or_none() is None

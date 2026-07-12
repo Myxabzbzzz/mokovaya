@@ -75,3 +75,20 @@ async def test_cancel_search_removes_from_queue(session):
     await cancel_search(callback, session)
 
     callback.message.answer.assert_any_call("Поиск отменён.")
+
+
+async def test_join_soon_after_match_shows_alert(session):
+    await _make_user(session, 1, "Боря", "@borya")
+    await _make_user(session, 2, "Аня", "@anya")
+    bot = AsyncMock()
+
+    await join_interviewer(_make_callback(1), session, bot)
+    await join_candidate(_make_callback(2), session, bot)
+
+    third_callback = _make_callback(1)
+    await join_interviewer(third_callback, session, bot)
+
+    third_callback.answer.assert_awaited_once_with(
+        "Ты только что нашёл партнёра, подожди немного перед следующим поиском",
+        show_alert=True,
+    )

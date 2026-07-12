@@ -1,6 +1,7 @@
+from datetime import datetime, timedelta
 from typing import Union
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import Match, QueueEntry, QueueRole, QueueStatus
@@ -10,12 +11,21 @@ OPPOSITE_ROLE = {
     QueueRole.candidate: QueueRole.interviewer,
 }
 
+# Minimum time a user must wait after being matched before they can join the
+# queue again. Without this, a user could cycle join->match->join indefinitely
+# to harvest the contact info of many strangers in a short time.
+REMATCH_COOLDOWN = timedelta(minutes=10)
+
 
 class AlreadyInQueueError(Exception):
     pass
 
 
 class NotInQueueError(Exception):
+    pass
+
+
+class RecentlyMatchedError(Exception):
     pass
 
 
@@ -30,6 +40,16 @@ async def join_queue(
     )
     if existing.scalar_one_or_none() is not None:
         raise AlreadyInQueueError()
+
+    last_match_result = await session.execute(
+        select(Match)
+        .where(or_(Match.interviewer_id == user_id, Match.candidate_id == user_id))
+        .order_by(Match.matched_at.desc())
+        .limit(1)
+    )
+    last_match = last_match_result.scalar_one_or_none()
+    if last_match is not None and datetime.utcnow() - last_match.matched_at < REMATCH_COOLDOWN:
+        raise RecentlyMatchedError()
 
     # Tiebreak on id: server_default=func.now() has only 1-second resolution on
     # SQLite (used in tests), so two entries created in the same second would

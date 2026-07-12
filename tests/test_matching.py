@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 import pytest
 from sqlalchemy import select
 
@@ -5,6 +7,7 @@ from db.models import Match, QueueEntry, QueueRole, QueueStatus, User
 from services.matching import (
     AlreadyInQueueError,
     NotInQueueError,
+    RecentlyMatchedError,
     cancel_queue,
     join_queue,
 )
@@ -96,6 +99,31 @@ async def test_join_queue_after_cancel_waits_again(session):
     await cancel_queue(session, user.id)
 
     result = await join_queue(session, user.id, QueueRole.candidate)
+
+    assert isinstance(result, QueueEntry)
+    assert result.status == QueueStatus.waiting
+
+
+async def test_join_queue_soon_after_match_raises(session):
+    candidate = await _make_user(session, 1, "Аня", "@anya")
+    interviewer = await _make_user(session, 2, "Боря", "@borya")
+    await join_queue(session, candidate.id, QueueRole.candidate)
+    await join_queue(session, interviewer.id, QueueRole.interviewer)
+
+    with pytest.raises(RecentlyMatchedError):
+        await join_queue(session, candidate.id, QueueRole.candidate)
+
+
+async def test_join_queue_after_cooldown_elapsed_succeeds(session):
+    candidate = await _make_user(session, 1, "Аня", "@anya")
+    interviewer = await _make_user(session, 2, "Боря", "@borya")
+    await join_queue(session, candidate.id, QueueRole.candidate)
+    match = await join_queue(session, interviewer.id, QueueRole.interviewer)
+
+    match.matched_at = datetime.utcnow() - timedelta(minutes=11)
+    await session.commit()
+
+    result = await join_queue(session, candidate.id, QueueRole.candidate)
 
     assert isinstance(result, QueueEntry)
     assert result.status == QueueStatus.waiting
