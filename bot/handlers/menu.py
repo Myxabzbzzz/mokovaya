@@ -7,6 +7,7 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
             [InlineKeyboardButton(text="🎤 Хочу собеседовать", callback_data="join_interviewer")],
             [InlineKeyboardButton(text="💻 Хочу пройти собеседование", callback_data="join_candidate")],
             [InlineKeyboardButton(text="✏️ Изменить имя/юзернейм", callback_data="edit_profile")],
+            [InlineKeyboardButton(text="🎲 Случайная задача", callback_data="random_task")],
         ]
     )
 
