@@ -27,7 +27,10 @@ def looks_like_sql_injection(text: str) -> bool:
 # (e.g. the bot admin's own handles, to prevent impersonation).
 RESERVED_VALUES = {"myxabzbzzzz", "rw8js7", "rw8js8", "муха", "myxa"}
 
-RESERVED_VALUE_REPLY = "Это имя/юзернейм зарезервированы, выбери, пожалуйста, другое."
+RESERVED_VALUE_REPLY = (
+    "Это муха, муха и так тут убирается по два раза в день, не надо так, "
+    "пусть отдохнет и не ведет собесы и не собесится, он чил гай сегодня, чмок <3"
+)
 
 
 def is_reserved_value(text: str) -> bool:
