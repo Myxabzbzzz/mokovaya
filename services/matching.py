@@ -34,6 +34,11 @@ async def join_queue(
     # Tiebreak on id: server_default=func.now() has only 1-second resolution on
     # SQLite (used in tests), so two entries created in the same second would
     # otherwise sort arbitrarily.
+    # with_for_update(skip_locked=True) prevents a race under real concurrency
+    # (e.g. Postgres): without a row lock, two concurrent transactions could
+    # both read the same waiting partner before either commits, producing two
+    # Match rows for the same partner. This is a no-op on SQLite (used in
+    # tests), which doesn't support FOR UPDATE and renders nothing for it.
     partner_result = await session.execute(
         select(QueueEntry)
         .where(
@@ -41,6 +46,7 @@ async def join_queue(
             QueueEntry.status == QueueStatus.waiting,
         )
         .order_by(QueueEntry.joined_at.asc(), QueueEntry.id.asc())
+        .with_for_update(skip_locked=True)
         .limit(1)
     )
     partner_entry = partner_result.scalar_one_or_none()

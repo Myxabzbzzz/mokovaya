@@ -1,3 +1,5 @@
+import logging
+
 from aiogram import Bot, F, Router
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 from sqlalchemy import select
@@ -6,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.handlers.menu import send_main_menu
 from db.models import Match, QueueRole, User
 from services.matching import AlreadyInQueueError, NotInQueueError, cancel_queue, join_queue
+
+logger = logging.getLogger(__name__)
 
 router = Router()
 
@@ -28,18 +32,32 @@ async def _notify_match(bot: Bot, session: AsyncSession, match: Match) -> None:
     interviewer = await session.get(User, match.interviewer_id)
     candidate = await session.get(User, match.candidate_id)
 
-    await bot.send_message(
-        interviewer.telegram_id,
-        "Найден партнёр! Ты — интервьюер.\n"
-        f"Кандидат: {candidate.name}\nКонтакт: {candidate.contact}\n\n"
-        "Договоритесь о времени сами.",
-    )
-    await bot.send_message(
-        candidate.telegram_id,
-        "Найден партнёр! Ты — кандидат.\n"
-        f"Интервьюер: {interviewer.name}\nКонтакт: {interviewer.contact}\n\n"
-        "Договоритесь о времени сами.",
-    )
+    # Each notification is sent independently: if one send fails (e.g. the
+    # user blocked the bot, or a transient Telegram API error), the other
+    # user should still be notified rather than losing both messages.
+    try:
+        await bot.send_message(
+            interviewer.telegram_id,
+            "Найден партнёр! Ты — интервьюер.\n"
+            f"Кандидат: {candidate.name}\nКонтакт: {candidate.contact}\n\n"
+            "Договоритесь о времени сами.",
+        )
+    except Exception:
+        logger.exception(
+            "Failed to notify interviewer %s about match %s", interviewer.telegram_id, match.id
+        )
+
+    try:
+        await bot.send_message(
+            candidate.telegram_id,
+            "Найден партнёр! Ты — кандидат.\n"
+            f"Интервьюер: {interviewer.name}\nКонтакт: {interviewer.contact}\n\n"
+            "Договоритесь о времени сами.",
+        )
+    except Exception:
+        logger.exception(
+            "Failed to notify candidate %s about match %s", candidate.telegram_id, match.id
+        )
 
 
 async def _join(callback: CallbackQuery, session: AsyncSession, bot: Bot, role: QueueRole) -> None:
