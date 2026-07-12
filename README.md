@@ -28,3 +28,4 @@ Telegram-бот для парных алгоритмических мок-соб
 ```bash
 python -m pytest -v
 ```
+# mokovaya
