@@ -5,7 +5,7 @@ import sys
 from aiogram import Bot, Dispatcher
 from aiogram.types import BotCommand
 
-from bot.handlers import queue, start
+from bot.handlers import edit_profile, queue, start
 from bot.middlewares.db import DbSessionMiddleware
 from bot.middlewares.throttling import ThrottlingMiddleware
 from config.settings import settings
@@ -17,6 +17,7 @@ def build_dispatcher() -> Dispatcher:
     dp.callback_query.middleware(ThrottlingMiddleware())
     dp.include_router(start.router)
     dp.include_router(queue.router)
+    dp.include_router(edit_profile.router)
     return dp
 
 

@@ -1,5 +1,6 @@
 import enum
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import BigInteger, DateTime, Enum, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -27,6 +28,9 @@ class User(Base):
     contact: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
+    )
+    profile_updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
     )
 
 

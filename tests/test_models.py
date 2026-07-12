@@ -15,6 +15,7 @@ async def test_create_and_query_user(session):
     assert fetched.name == "Аня"
     assert fetched.contact == "@anya"
     assert isinstance(fetched.created_at, datetime)
+    assert fetched.profile_updated_at is None
 
 
 async def test_queue_entry_defaults_to_waiting(session):

@@ -11,7 +11,7 @@ def test_main_menu_keyboard_has_both_role_buttons():
         for row in keyboard.inline_keyboard
         for button in row
     }
-    assert callback_data == {"join_interviewer", "join_candidate"}
+    assert callback_data == {"join_interviewer", "join_candidate", "edit_profile"}
 
     texts = {
         button.text
@@ -20,6 +20,7 @@ def test_main_menu_keyboard_has_both_role_buttons():
     }
     assert "🎤 Хочу собеседовать" in texts
     assert "💻 Хочу пройти собеседование" in texts
+    assert "✏️ Изменить имя/юзернейм" in texts
 
 
 async def test_send_main_menu_calls_message_answer():
