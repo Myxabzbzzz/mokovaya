@@ -5,7 +5,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.handlers.menu import send_main_menu
+from bot.handlers.menu import main_menu_keyboard, send_main_menu
 from db.models import Match, QueueRole, User
 from services.matching import (
     AlreadyInQueueError,
@@ -47,6 +47,7 @@ async def _notify_match(bot: Bot, session: AsyncSession, match: Match) -> None:
             "Найден партнёр! Ты — интервьюер.\n"
             f"Кандидат: {candidate.name}\nКонтакт: {candidate.contact}\n\n"
             "Договоритесь о времени сами.",
+            reply_markup=main_menu_keyboard(),
         )
     except Exception:
         logger.exception(
@@ -59,6 +60,7 @@ async def _notify_match(bot: Bot, session: AsyncSession, match: Match) -> None:
             "Найден партнёр! Ты — кандидат.\n"
             f"Интервьюер: {interviewer.name}\nКонтакт: {interviewer.contact}\n\n"
             "Договоритесь о времени сами.",
+            reply_markup=main_menu_keyboard(),
         )
     except Exception:
         logger.exception(

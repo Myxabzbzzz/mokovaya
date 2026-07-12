@@ -1,5 +1,6 @@
 from unittest.mock import AsyncMock
 
+from bot.handlers.menu import main_menu_keyboard
 from bot.handlers.queue import cancel_search, join_candidate, join_interviewer
 from db.models import User
 
@@ -75,6 +76,19 @@ async def test_cancel_search_removes_from_queue(session):
     await cancel_search(callback, session)
 
     callback.message.answer.assert_any_call("Поиск отменён.")
+
+
+async def test_match_notification_includes_main_menu_keyboard(session):
+    await _make_user(session, 1, "Боря", "@borya")
+    await _make_user(session, 2, "Аня", "@anya")
+    bot = AsyncMock()
+
+    await join_interviewer(_make_callback(1), session, bot)
+    await join_candidate(_make_callback(2), session, bot)
+
+    assert bot.send_message.await_count == 2
+    for call in bot.send_message.call_args_list:
+        assert call.kwargs.get("reply_markup") == main_menu_keyboard()
 
 
 async def test_join_soon_after_match_shows_alert(session):

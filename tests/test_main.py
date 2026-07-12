@@ -1,5 +1,6 @@
 from bot.handlers import queue, start
 from bot.main import build_dispatcher
+from bot.middlewares.throttling import ThrottlingMiddleware
 
 
 def test_build_dispatcher_includes_expected_routers():
@@ -7,3 +8,7 @@ def test_build_dispatcher_includes_expected_routers():
 
     assert start.router in dp.sub_routers
     assert queue.router in dp.sub_routers
+    assert any(
+        isinstance(middleware, ThrottlingMiddleware)
+        for middleware in dp.callback_query.middleware
+    )
